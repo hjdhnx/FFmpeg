@@ -37,6 +37,8 @@ jobs:
         shell: bash
         run: |
           TOOLS="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          # openssl 1.1.1 的 android target 探测裸 gcc 名（无 API 后缀）
+          ln -sf "$TOOLS/aarch64-linux-android21-clang" "$TOOLS/aarch64-linux-android-gcc"
           wget -q https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1w/openssl-1.1.1w.tar.gz
           tar xzf openssl-1.1.1w.tar.gz
           cd openssl-1.1.1w
