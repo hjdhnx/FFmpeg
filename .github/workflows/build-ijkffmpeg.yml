@@ -62,8 +62,6 @@ jobs:
           SYSROOT="$NDK/toolchains/llvm/prebuilt/linux-x86_64/sysroot"
           BVC2="$PWD/bytevc2"
           OSS="$PWD/openssl-1.1.1w/out"
-          mkdir -p bytevc2_inc
-          cp bytevc2/bytevc2_api.h bytevc2/bytevc2_nal.h bytevc2_inc/
           ./configure \
             --prefix="$PWD/out" \
             --enable-cross-compile \
@@ -125,7 +123,7 @@ jobs:
             --disable-audiotoolbox --disable-videotoolbox \
             --disable-linux-perf --disable-bzlib \
             --enable-optimizations --enable-small \
-            --extra-cflags="-O3 -pipe -std=c99 -ffast-math -fstack-protector-strong -fstrict-aliasing -Werror=strict-aliasing -Wno-psabi -DANDROID -DNDEBUG -I$OSS/include -I$BVC2_INC" \
+            --extra-cflags="-O3 -pipe -std=c99 -ffast-math -fstack-protector-strong -fstrict-aliasing -Werror=strict-aliasing -Wno-psabi -DANDROID -DNDEBUG -I$OSS/include" \
             --extra-ldflags="-L$OSS/lib -L$BVC2" \
             --extra-libs="-lssl -lcrypto -lbyteVC2dec" || {
               echo "configure failed, dumping config.err"
