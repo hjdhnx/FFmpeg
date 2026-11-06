@@ -55,6 +55,9 @@ jobs:
       - name: Build openssl arm64
         shell: bash
         working-directory: /home/runner/ijkplayer/android/contrib
+        env:
+          ANDROID_NDK: /home/runner/ndk/android-ndk-r22b
+          ANDROID_NDK_ROOT: /home/runner/ndk/android-ndk-r22b
         run: |
           export ANDROID_NDK="$ANDROID_NDK"
           chmod +x compile-openssl.sh tools/do-compile-openssl.sh
@@ -63,6 +66,9 @@ jobs:
       - name: Build ffmpeg arm64 (bytevc2 链接注入)
         shell: bash
         working-directory: /home/runner/ijkplayer/android/contrib
+        env:
+          ANDROID_NDK: /home/runner/ndk/android-ndk-r22b
+          ANDROID_NDK_ROOT: /home/runner/ndk/android-ndk-r22b
         run: |
           export ANDROID_NDK="$ANDROID_NDK"
           chmod +x compile-ffmpeg.sh tools/do-compile-ffmpeg.sh
