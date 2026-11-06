@@ -144,7 +144,10 @@ jobs:
           OSS="$PWD/openssl-1.1.1w/out"
           mkdir -p out
           # bytevc2 解码库随 so 同目录分发: DT_NEEDED libbyteVC2dec.so
-          "$CC" -lm -lz -shared --sysroot="$SYSROOT" -Wl,--no-undefined -Wl,-z,noexecstack \
+          # -Bsymbolic = ffmpeg 官方链 so 标配：内部符号绑定本地定义，
+          # 否则默认导出符号（如 ff_cos_*）被 lld 判 preemptible，
+          # 只读段无法放动态重定位直接报错
+          "$CC" -lm -lz -shared --sysroot="$SYSROOT" -Wl,--no-undefined -Wl,-Bsymbolic -Wl,-z,noexecstack \
             -Wl,-soname,libijkffmpeg.so \
             $(find libavcodec libavformat libavutil libswresample libswscale libavfilter -name '*.o' | sort) \
             -L"$OSS/lib" -lssl -lcrypto \
