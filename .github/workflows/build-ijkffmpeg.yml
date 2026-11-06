@@ -33,6 +33,17 @@ jobs:
           unzip -q ${NDK_VER}-linux-x86_64.zip -d "$HOME/ndk"
           echo "NDK=$HOME/ndk/$NDK_VER" >> "$GITHUB_ENV"
 
+      - name: Build openssl 1.1.1w arm64 (静态)
+        shell: bash
+        run: |
+          TOOLS="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          wget -q https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1w/openssl-1.1.1w.tar.gz
+          tar xzf openssl-1.1.1w.tar.gz
+          cd openssl-1.1.1w
+          PATH="$TOOLS:$PATH" ./Configure android-arm64 no-shared no-tests \
+            -D__ANDROID_API__=21 --prefix="$PWD/out"
+          PATH="$TOOLS:$PATH" make -j"$(nproc)" build_libs
+
       - name: Configure ffmpeg (ex_so 参数 + bytevc2)
         shell: bash
         run: |
@@ -40,7 +51,7 @@ jobs:
           CC="$TOOLS/aarch64-linux-android21-clang"
           SYSROOT="$NDK/toolchains/llvm/prebuilt/linux-x86_64/sysroot"
           BVC2="$PWD/bytevc2"
-          mkdir -p bytevc2_inc bytevc2
+          mkdir -p bytevc2_inc
           cp bytevc2/bytevc2_api.h bytevc2/bytevc2_nal.h bytevc2_inc/
           ./configure \
             --prefix="$PWD/out" \
@@ -104,155 +115,12 @@ jobs:
             --enable-optimizations --enable-small \
             --extra-cflags="-O3 -pipe -std=c99 -ffast-math -fstack-protector-strong -fstrict-aliasing -Werror=strict-aliasing -Wno-psabi -Wa,--noexecstack -DANDROID -DNDEBUG -I$BVC2_INC" \
             --extra-ldflags="-L$BVC2" \
-            --extra-libs="-lbyteVC2dec"
-name: Build libijkffmpeg (bytevc2)
-
-on:
-  workflow_dispatch:
-  push:
-    branches: [bytevc2]
-    paths:
-      - 'libavcodec/bytevc2*'
-      - 'libavcodec/codec_id.h'
-      - 'libavcodec/codec_desc.c'
-      - 'libavcodec/allcodecs.c'
-      - 'libavcodec/Makefile'
-      - 'libavformat/isom.c'
-      - 'libavformat/mov.c'
-      - '.github/workflows/build-ijkffmpeg.yml'
-
-permissions:
-  contents: write
-
-env:
-  NDK_VER: android-ndk-r22b
-
-jobs:
-  build-arm64:
-    runs-on: ubuntu-22.04
-    timeout-minutes: 90
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install NDK r22b
-        run: |
-          wget -q https://dl.google.com/android/repository/${NDK_VER}-linux-x86_64.zip
-          unzip -q ${NDK_VER}-linux-x86_64.zip -d "$HOME/ndk"
-          echo "NDK=$HOME/ndk/$NDK_VER" >> "$GITHUB_ENV"
-
-      - name: Configure ffmpeg (ex_so 参数 + bytevc2)
-        shell: bash
-        run: |
-          TOOLS="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
-          CC="$TOOLS/aarch64-linux-android21-clang"
-          SYSROOT="$NDK/toolchains/llvm/prebuilt/linux-x86_64/sysroot"
-          BVC2="$PWD/bytevc2"
-          mkdir -p bytevc2_inc bytevc2
-          cp bytevc2/bytevc2_api.h bytevc2/bytevc2_nal.h bytevc2_inc/
-          ./configure \
-            --prefix="$PWD/out" \
-            --enable-cross-compile \
-            --target-os=android \
-            --arch=aarch64 \
-            --cc="$CC" \
-            --sysroot="$SYSROOT" \
-            --enable-pic \
-            --disable-gpl --disable-nonfree \
-            --disable-gray --disable-swscale-alpha \
-            --disable-programs --disable-ffmpeg --disable-ffplay --disable-ffprobe \
-            --disable-doc --disable-htmlpages --disable-manpages --disable-podpages --disable-txtpages \
-            --disable-avdevice --enable-avcodec --enable-avformat --enable-avutil \
-            --enable-swresample --enable-swscale --disable-postproc --enable-avfilter \
-            --disable-avresample --enable-network \
-            --disable-d3d11va --disable-dxva2 --disable-vaapi --disable-vdpau \
-            --disable-videotoolbox --disable-audiotoolbox \
-            --disable-encoders --enable-encoder=png --enable-encoder=pcm_alaw \
-            --disable-decoders \
-            --enable-decoder=bytevc2 \
-            --enable-decoder=aac --enable-decoder=aac_latm --enable-decoder=flv \
-            --enable-decoder=h264 --enable-decoder='mp3*' --enable-decoder=vp6f \
-            --enable-decoder=flac --enable-decoder=hevc --enable-decoder=vp8 \
-            --enable-decoder=vp9 --enable-decoder=h263 --enable-decoder=h263i \
-            --enable-decoder=h263p --enable-decoder=mpeg4 --enable-decoder=mjpeg \
-            --enable-decoder=pcm_alaw \
-            --disable-hwaccels \
-            --disable-muxers --enable-muxer=mp4 \
-            --disable-demuxers \
-            --enable-demuxer='ijk*' \
-            --enable-demuxer=aac --enable-demuxer=concat --enable-demuxer=data \
-            --enable-demuxer=flv --enable-demuxer=hls --enable-demuxer=live_flv \
-            --enable-demuxer=mov --enable-demuxer=mp3 --enable-demuxer=mpegps \
-            --enable-demuxer=mpegts --enable-demuxer=mpegvideo --enable-demuxer=flac \
-            --enable-demuxer=hevc --enable-demuxer=webm_dash_manifest \
-            --enable-demuxer=mpeg4 --enable-demuxer=rtp --enable-demuxer=sdp \
-            --enable-demuxer=rtsp --enable-demuxer=mjpeg --enable-demuxer=avi \
-            --disable-parsers \
-            --enable-parser=aac --enable-parser=aac_latm --enable-parser=h264 \
-            --enable-parser=flac --enable-parser=hevc --enable-parser=mpeg4 \
-            --enable-parser=mpeg4video --enable-parser=mpegvideo \
-            --enable-bsfs \
-            --disable-bsf=chomp --disable-bsf=dca_core --disable-bsf=dump_extradata \
-            --disable-bsf=hevc_mp4toannexb --disable-bsf=imx_dump_header \
-            --disable-bsf=mjpeg2jpeg --disable-bsf=mjpega_dump_header \
-            --disable-bsf=mov2textsub --disable-bsf=mp3_header_decompress \
-            --disable-bsf=mpeg4_unpack_bframes --disable-bsf=noise \
-            --disable-bsf=remove_extradata --disable-bsf=text2movsub \
-            --disable-bsf=vp9_superframe --disable-bsf=eac3_core \
-            --enable-protocols \
-            --disable-protocol=bluray --disable-protocol=ffrtmpcrypt \
-            --disable-protocol=gopher --disable-protocol=icecast \
-            --disable-protocol='librtmp*' --disable-protocol=libssh \
-            --disable-protocol=md5 --disable-protocol=mmsh --disable-protocol=mmst \
-            --disable-protocol='rtmp*' --disable-protocol=sctp \
-            --disable-protocol=unix --disable-devices \
-            --disable-filters --disable-iconv \
-            --disable-audiotoolbox --disable-videotoolbox \
-            --disable-linux-perf --disable-bzlib \
-            --enable-optimizations --enable-small \
-            --extra-cflags="-O3 -pipe -std=c99 -ffast-math -fstack-protector-strong -fstrict-aliasing -Werror=strict-aliasing -Wno-psabi -Wa,--noexecstack -DANDROID -DNDEBUG -I$BVC2_INC" \
-            --extra-ldflags="-L$BVC2" \
-            --extra-libs="-lbyteVC2dec"
+            --extra-libs="-lbyteVC2dec" || {
+              echo "===== configure 失败，dump config.err ====="
+              tail -60 ffbuild/config.err 2>/dev/null || true
+              exit 1
+            }
           grep -c bytevc2 ffbuild/config.mak || true
-
-      - name: Dump config.err (configure 失败诊断)
-        if: failure()
-        shell: bash
-        run: |
-          tail -60 ffbuild/config.err 2>/dev/null || echo "无 config.err"
-
-      - name: Make ffmpeg
-        run: make -j"$(nproc)"
-
-      - name: Link libijkffmpeg.so (单 so，收集全部 .o)
-        shell: bash
-        run: |
-          TOOLS="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
-          CC="$TOOLS/aarch64-linux-android21-clang"
-          SYSROOT="$NDK/toolchains/llvm/prebuilt/linux-x86_64/sysroot"
-          mkdir -p out
-          # bytevc2 解码库同目录分发：DT_NEEDED libbyteVC2dec.so
-          "$CC" -lm -lz -shared --sysroot="$SYSROOT" -Wl,--no-undefined -Wl,-z,noexecstack \
-            -Wl,-soname,libijkffmpeg.so \
-            $(find libavcodec libavformat libavutil libswresample libswscale libavfilter -name '*.o' | sort) \
-            -L"$PWD/bytevc2" -lbyteVC2dec \
-            -o out/libijkffmpeg.so
-          cp bytevc2/libbyteVC2dec.so out/
-          ls -la out/
-
-      - name: Verify
-        run: |
-          RE="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
-          "$RE" -d out/libijkffmpeg.so | grep NEEDED
-          echo "bytevc2 解码器: $(grep -ac bytevc2 out/libijkffmpeg.so)"
-          "$RE" -h out/libijkffmpeg.so | grep -E 'Machine|Class'
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: libijkffmpeg-bytevc2
-          path: |
-            out/libijkffmpeg.so
-            out/libbyteVC2dec.so
-
 
       - name: Make ffmpeg
         run: make -j"$(nproc)"
