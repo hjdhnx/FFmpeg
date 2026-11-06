@@ -143,14 +143,15 @@ jobs:
           SYSROOT="$NDK/toolchains/llvm/prebuilt/linux-x86_64/sysroot"
           OSS="$PWD/openssl-1.1.1w/out"
           mkdir -p out
+          # -Bsymbolic = ffmpeg 官方链 so 标配：内部符号绑定本地定义，否则
+          #   默认导出符号（如 ff_cos_*）被 lld 判 preemptible，只读段无法放
+          #   动态重定位直接报错。
+          # compat/ 必收：bionic 目标下 configure 把全局 strtod 重定向
+          #   avpriv_strtod（add_compat strtod.o），定义在顶层 compat/。
+          # 续行链中间不能插 # 注释行（注释会吞掉行尾 \ 截断命令）。
           # bytevc2 解码库随 so 同目录分发: DT_NEEDED libbyteVC2dec.so
-          # -Bsymbolic = ffmpeg 官方链 so 标配：内部符号绑定本地定义，
-          # 否则默认导出符号（如 ff_cos_*）被 lld 判 preemptible，
-          # 只读段无法放动态重定位直接报错
           "$CC" -lm -lz -shared --sysroot="$SYSROOT" -Wl,--no-undefined -Wl,-Bsymbolic -Wl,-z,noexecstack \
             -Wl,-soname,libijkffmpeg.so \
-            # compat/ 必收：bionic 目标下 configure 把全局 strtod 重定向
-            # avpriv_strtod（add_compat strtod.o），定义在顶层 compat/
             $(find libavcodec libavformat libavutil libswresample libswscale libavfilter compat -name '*.o' | sort) \
             -L"$OSS/lib" -lssl -lcrypto \
             -L"$PWD/bytevc2" -lbyteVC2dec \
