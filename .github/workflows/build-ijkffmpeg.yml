@@ -33,29 +33,12 @@ jobs:
           unzip -q ${NDK_VER}-linux-x86_64.zip -d "$HOME/ndk"
           echo "NDK=$HOME/ndk/$NDK_VER" >> "$GITHUB_ENV"
 
-      - name: Build openssl 1.1.1w arm64 (静态)
-        shell: bash
-        run: |
-          TOOLS="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
-          # openssl 1.1.1 的 android target 探测裸 gcc 名（无 API 后缀）
-          ln -sf "$TOOLS/aarch64-linux-android21-clang" "$TOOLS/aarch64-linux-android-gcc"
-          wget -q https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1w/openssl-1.1.1w.tar.gz
-          tar xzf openssl-1.1.1w.tar.gz
-          cd openssl-1.1.1w
-          PATH="$TOOLS:$PATH" ./Configure android-arm64 no-shared no-tests \
-            -D__ANDROID_API__=21 --prefix="$PWD/out"
-          PATH="$TOOLS:$PATH" make -j"$(nproc)" build_libs
-          mkdir -p out/lib out/include
-          # build_libs 已产 .a 于树内，install 校准
-          PATH="$TOOLS:$PATH" make install_sw >/dev/null 2>&1 || true
-
       - name: Configure ffmpeg (ex_so 参数 + bytevc2)
         shell: bash
         run: |
           TOOLS="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
           CC="$TOOLS/aarch64-linux-android21-clang"
           SYSROOT="$NDK/toolchains/llvm/prebuilt/linux-x86_64/sysroot"
-          OSS="$PWD/openssl-1.1.1w/out"
           BVC2="$PWD/bytevc2"
           mkdir -p bytevc2_inc bytevc2
           cp bytevc2/bytevc2_api.h bytevc2/bytevc2_nal.h bytevc2_inc/
@@ -121,9 +104,9 @@ jobs:
             --disable-audiotoolbox --disable-videotoolbox \
             --disable-linux-perf --disable-bzlib \
             --enable-optimizations --enable-small \
-            --extra-cflags="-O3 -pipe -std=c99 -ffast-math -fstack-protector-strong -fstrict-aliasing -Werror=strict-aliasing -Wno-psabi -Wa,--noexecstack -DANDROID -DNDEBUG -I$OSS/include -I$BVC2_INC" \
-            --extra-ldflags="-L$OSS/lib -L$BVC2" \
-            --extra-libs="-lssl -lcrypto -lbyteVC2dec"
+            --extra-cflags="-O3 -pipe -std=c99 -ffast-math -fstack-protector-strong -fstrict-aliasing -Werror=strict-aliasing -Wno-psabi -Wa,--noexecstack -DANDROID -DNDEBUG -I$BVC2_INC" \
+            --extra-ldflags="-L$BVC2" \
+            --extra-libs="-lbyteVC2dec"
           grep -c bytevc2 ffbuild/config.mak || true
 
       - name: Make ffmpeg
