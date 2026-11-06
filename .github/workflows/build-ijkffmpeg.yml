@@ -33,13 +33,31 @@ jobs:
           unzip -q ${NDK_VER}-linux-x86_64.zip -d "$HOME/ndk"
           echo "NDK=$HOME/ndk/$NDK_VER" >> "$GITHUB_ENV"
 
-      - name: Configure ffmpeg (ex_so 参数 + bytevc2)
+      - name: Build openssl 1.1.1w arm64 (static, linux-generic64 cross)
+        shell: bash
+        run: |
+          TOOLS="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          wget -q https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1w/openssl-1.1.1w.tar.gz
+          tar xzf openssl-1.1.1w.tar.gz
+          cd openssl-1.1.1w
+          # linux-generic64 target 不做 android NDK 探测（aarch64-linux-android-gcc
+          # 在 NDK r19+ 已不存在）——显式给 NDK clang wrapper，纯交叉编译
+          PATH="$TOOLS:$PATH" ./Configure linux-generic64 no-shared no-tests \
+            CC="$TOOLS/aarch64-linux-android21-clang" \
+            AR="$TOOLS/llvm-ar" \
+            RANLIB="$TOOLS/llvm-ranlib" \
+            --prefix="$PWD/out" || { tail -40 config.log; exit 1; }
+          PATH="$TOOLS:$PATH" make -j"$(nproc)" build_libs
+          ls -la "$PWD/out/lib/"
+
+      - name: Configure ffmpeg (ex_so params + bytevc2 + openssl)
         shell: bash
         run: |
           TOOLS="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
           CC="$TOOLS/aarch64-linux-android21-clang"
           SYSROOT="$NDK/toolchains/llvm/prebuilt/linux-x86_64/sysroot"
           BVC2="$PWD/bytevc2"
+          OSS="$PWD/openssl-1.1.1w/out"
           mkdir -p bytevc2_inc
           cp bytevc2/bytevc2_api.h bytevc2/bytevc2_nal.h bytevc2_inc/
           ./configure \
@@ -50,6 +68,7 @@ jobs:
             --cc="$CC" \
             --sysroot="$SYSROOT" \
             --enable-pic \
+            --enable-openssl \
             --disable-gpl --disable-nonfree \
             --disable-gray --disable-swscale-alpha \
             --disable-programs --disable-ffmpeg --disable-ffplay --disable-ffprobe \
@@ -102,29 +121,31 @@ jobs:
             --disable-audiotoolbox --disable-videotoolbox \
             --disable-linux-perf --disable-bzlib \
             --enable-optimizations --enable-small \
-            --extra-cflags="-O3 -pipe -std=c99 -ffast-math -fstack-protector-strong -fstrict-aliasing -Werror=strict-aliasing -Wno-psabi -Wa,--noexecstack -DANDROID -DNDEBUG -I$BVC2_INC" \
-            --extra-ldflags="-L$BVC2" \
-            --extra-libs="-lbyteVC2dec" || {
-              echo "===== configure 失败，dump config.err ====="
+            --extra-cflags="-O3 -pipe -std=c99 -ffast-math -fstack-protector-strong -fstrict-aliasing -Werror=strict-aliasing -Wno-psabi -Wa,--noexecstack -DANDROID -DNDEBUG -I$OSS/include -I$BVC2_INC" \
+            --extra-ldflags="-L$OSS/lib -L$BVC2" \
+            --extra-libs="-lssl -lcrypto -lbyteVC2dec" || {
+              echo "configure failed, dumping config.err"
               tail -60 ffbuild/config.err 2>/dev/null || true
               exit 1
             }
-          grep -c bytevc2 ffbuild/config.mak || true
+          grep -c 'bytevc2' ffbuild/config.mak || true
 
       - name: Make ffmpeg
         run: make -j"$(nproc)"
 
-      - name: Link libijkffmpeg.so (单 so，收集全部 .o)
+      - name: Link libijkffmpeg.so (single so)
         shell: bash
         run: |
           TOOLS="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
           CC="$TOOLS/aarch64-linux-android21-clang"
           SYSROOT="$NDK/toolchains/llvm/prebuilt/linux-x86_64/sysroot"
+          OSS="$PWD/openssl-1.1.1w/out"
           mkdir -p out
-          # bytevc2 解码库同目录分发：DT_NEEDED libbyteVC2dec.so
+          # bytevc2 解码库随 so 同目录分发: DT_NEEDED libbyteVC2dec.so
           "$CC" -lm -lz -shared --sysroot="$SYSROOT" -Wl,--no-undefined -Wl,-z,noexecstack \
             -Wl,-soname,libijkffmpeg.so \
             $(find libavcodec libavformat libavutil libswresample libswscale libavfilter -name '*.o' | sort) \
+            -L"$OSS/lib" -lssl -lcrypto \
             -L"$PWD/bytevc2" -lbyteVC2dec \
             -o out/libijkffmpeg.so
           cp bytevc2/libbyteVC2dec.so out/
@@ -134,7 +155,8 @@ jobs:
         run: |
           RE="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf"
           "$RE" -d out/libijkffmpeg.so | grep NEEDED
-          echo "bytevc2 解码器: $(grep -ac bytevc2 out/libijkffmpeg.so)"
+          echo "bytevc2 hits: $(grep -ac bytevc2 out/libijkffmpeg.so)"
+          echo "openssl hits: $(grep -ac SSL_CTX_new out/libijkffmpeg.so)"
           "$RE" -h out/libijkffmpeg.so | grep -E 'Machine|Class'
 
       - uses: actions/upload-artifact@v4
