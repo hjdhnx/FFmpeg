@@ -51,7 +51,6 @@ jobs:
             --sysroot="$SYSROOT" \
             --enable-pic \
             --disable-gpl --disable-nonfree \
-            --enable-runtime-cpu-detect \
             --disable-gray --disable-swscale-alpha \
             --disable-programs --disable-ffmpeg --disable-ffplay --disable-ffprobe \
             --disable-doc --disable-htmlpages --disable-manpages --disable-podpages --disable-txtpages \
