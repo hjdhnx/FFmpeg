@@ -149,7 +149,9 @@ jobs:
           # 只读段无法放动态重定位直接报错
           "$CC" -lm -lz -shared --sysroot="$SYSROOT" -Wl,--no-undefined -Wl,-Bsymbolic -Wl,-z,noexecstack \
             -Wl,-soname,libijkffmpeg.so \
-            $(find libavcodec libavformat libavutil libswresample libswscale libavfilter -name '*.o' | sort) \
+            # compat/ 必收：bionic 目标下 configure 把全局 strtod 重定向
+            # avpriv_strtod（add_compat strtod.o），定义在顶层 compat/
+            $(find libavcodec libavformat libavutil libswresample libswscale libavfilter compat -name '*.o' | sort) \
             -L"$OSS/lib" -lssl -lcrypto \
             -L"$PWD/bytevc2" -lbyteVC2dec \
             -o out/libijkffmpeg.so
