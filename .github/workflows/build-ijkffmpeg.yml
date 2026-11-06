@@ -52,7 +52,7 @@ jobs:
           mkdir -p "$PWD/out/lib" "$PWD/out/include"
           cp libssl.a libcrypto.a "$PWD/out/lib/"
           cp -r include/openssl "$PWD/out/include/"
-          ls -la "$PWD/out/lib/" "$PWD/out/include/openssl" | head -6
+          ls "$PWD/out/lib/" "$PWD/out/include/openssl"
 
       - name: Configure ffmpeg (ex_so params + bytevc2 + openssl)
         shell: bash
