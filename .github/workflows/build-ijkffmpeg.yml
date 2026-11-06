@@ -48,7 +48,11 @@ jobs:
             RANLIB="$TOOLS/llvm-ranlib" \
             --prefix="$PWD/out" || { tail -40 config.log; exit 1; }
           PATH="$TOOLS:$PATH" make -j"$(nproc)" build_libs
-          ls -la "$PWD/out/lib/"
+          # build_libs 只产树内 .a / 头文件，手动布局 out/{lib,include}
+          mkdir -p "$PWD/out/lib" "$PWD/out/include"
+          cp libssl.a libcrypto.a "$PWD/out/lib/"
+          cp -r include/openssl "$PWD/out/include/"
+          ls -la "$PWD/out/lib/" "$PWD/out/include/openssl" | head -6
 
       - name: Configure ffmpeg (ex_so params + bytevc2 + openssl)
         shell: bash
