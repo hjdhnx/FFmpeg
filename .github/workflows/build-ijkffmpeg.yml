@@ -50,7 +50,6 @@ jobs:
             --cc="$CC" \
             --sysroot="$SYSROOT" \
             --enable-pic \
-            --enable-openssl \
             --disable-gpl --disable-nonfree \
             --enable-runtime-cpu-detect \
             --disable-gray --disable-swscale-alpha \
