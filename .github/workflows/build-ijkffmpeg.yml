@@ -32,10 +32,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build & run probe (x86 minimal)
         run: |
+          # 不加 --disable-network：ijk fork 的 libavutil/application.c
+          # 恒编且走 libavformat/network.h，disable-network 分支在 glibc
+          # 下自定义 sockaddr/addrinfo 与系统头撞车（redefinition 实锤）
           ./configure \
             --disable-everything --enable-demuxer=mov --enable-protocol=file \
             --enable-decoder=bytevc2 \
-            --disable-programs --disable-doc --disable-network \
+            --disable-programs --disable-doc \
             --disable-asm --enable-static --disable-shared \
             --disable-debug
           make -j"$(nproc)" libavcodec/libavcodec.a libavformat/libavformat.a libavutil/libavutil.a
