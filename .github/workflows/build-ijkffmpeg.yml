@@ -125,11 +125,11 @@ jobs:
             --disable-audiotoolbox --disable-videotoolbox \
             --disable-linux-perf --disable-bzlib \
             --enable-optimizations --enable-small \
-            --extra-cflags="-O3 -pipe -std=c99 -ffast-math -fstack-protector-strong -fstrict-aliasing -Werror=strict-aliasing -Wno-psabi -Wa,--noexecstack -DANDROID -DNDEBUG -I$OSS/include -I$BVC2_INC" \
+            --extra-cflags="-O3 -pipe -std=c99 -ffast-math -fstack-protector-strong -fstrict-aliasing -Werror=strict-aliasing -Wno-psabi -DANDROID -DNDEBUG -I$OSS/include -I$BVC2_INC" \
             --extra-ldflags="-L$OSS/lib -L$BVC2" \
             --extra-libs="-lssl -lcrypto -lbyteVC2dec" || {
               echo "configure failed, dumping config.err"
-              tail -60 ffbuild/config.err 2>/dev/null || true
+              tail -80 ffbuild/config.log 2>/dev/null || true
               exit 1
             }
           grep -c 'bytevc2' ffbuild/config.mak || true
