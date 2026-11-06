@@ -1,0 +1,92 @@
+name: Build libijkffmpeg (bytevc2)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [bytevc2]
+    paths:
+      - 'libavcodec/bytevc2*'
+      - 'libavcodec/codec_id.h'
+      - 'libavcodec/codec_desc.c'
+      - 'libavcodec/allcodecs.c'
+      - 'libavcodec/Makefile'
+      - 'libavformat/isom.c'
+      - 'libavformat/mov.c'
+      - '.github/workflows/build-ijkffmpeg.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-arm64:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install NDK r22b (RELEASE.TXT 探测兼容)
+        shell: bash
+        run: |
+          wget -q https://dl.google.com/android/repository/android-ndk-r22b-linux-x86_64.zip
+          unzip -q android-ndk-r22b-linux-x86_64.zip -d "$HOME/ndk"
+          echo "ANDROID_NDK=$HOME/ndk/android-ndk-r22b" >> "$GITHUB_ENV"
+
+      - name: Clone ijkplayer build scripts (CarGuo)
+        run: |
+          git clone --quiet --depth 1 https://github.com/CarGuo/ijkplayer.git "$HOME/ijkplayer"
+
+      - name: Prepare openssl-1.1.1w source
+        shell: bash
+        run: |
+          cd "$HOME/ijkplayer/android/contrib"
+          wget -q https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1w/openssl-1.1.1w.tar.gz
+          tar xzf openssl-1.1.1w.tar.gz
+          mv openssl-1.1.1w openssl-arm64
+
+      - name: Layout ffmpeg source (bytevc2 分支 = 本仓库)
+        shell: bash
+        run: |
+          cd "$HOME/ijkplayer/android/contrib"
+          ln -s "$GITHUB_WORKSPACE" ffmpeg-arm64
+          # bytevc2 解码库 so + 头文件（仓库 bytevc2/ 随带）
+          cp bytevc2/libbyteVC2dec.so "$GITHUB_WORKSPACE/bytevc2/" 2>/dev/null || true
+          ls -la ffmpeg-arm64/libavcodec/bytevc2dec.c
+
+      - name: Build openssl arm64
+        shell: bash
+        working-directory: "$HOME/ijkplayer/android/contrib"
+        run: |
+          export ANDROID_NDK="$ANDROID_NDK"
+          chmod +x compile-openssl.sh tools/do-compile-openssl.sh
+          ./compile-openssl.sh arm64
+
+      - name: Build ffmpeg arm64 (bytevc2 链接注入)
+        shell: bash
+        working-directory: "$HOME/ijkplayer/android/contrib"
+        run: |
+          export ANDROID_NDK="$ANDROID_NDK"
+          chmod +x compile-ffmpeg.sh tools/do-compile-ffmpeg.sh
+          BVC2="$GITHUB_WORKSPACE/bytevc2"
+          # bytevc2 解码器 enable + 解码库链接注入（修改脚本拷贝，不碰仓库原件）
+          cp tools/do-compile-ffmpeg.sh tools/do-compile-ffmpeg.sh.orig
+          sed -i "s|^\. \$FF_BUILD_ROOT/../../config/module.sh$|. \$FF_BUILD_ROOT/../../config/module.sh\nFF_CFG_FLAGS=\"\$FF_CFG_FLAGS --enable-decoder=bytevc2\"\nFF_CFLAGS=\"\$FF_CFLAGS -I$BVC2\"\nFF_DEP_LIBS=\"\$FF_DEP_LIBS -L$BVC2 -lbyteVC2dec\"|" tools/do-compile-ffmpeg.sh
+          grep -n bytevc2 tools/do-compile-ffmpeg.sh | head -4
+          ./compile-ffmpeg.sh arm64
+
+      - name: Verify (bytevc2dec 符号 + DT_NEEDED)
+        run: |
+          SO="$HOME/ijkplayer/android/contrib/build/ffmpeg-arm64/output/libijkffmpeg.so"
+          ls -la "$SO"
+          NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-readelf -d "$SO" | grep NEEDED
+          echo "bytevc2dec 引用数: $(grep -ac byteVC2dec "$SO" || true)"
+
+      - name: Collect output
+        run: |
+          mkdir -p output
+          cp "$HOME/ijkplayer/android/contrib/build/ffmpeg-arm64/output/libijkffmpeg.so" output/
+          cp "$GITHUB_WORKSPACE/bytevc2/libbyteVC2dec.so" output/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: libijkffmpeg-bytevc2
+          path: output/
