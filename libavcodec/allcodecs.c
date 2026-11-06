@@ -32,6 +32,7 @@
 extern AVCodec ff_a64multi_encoder;
 extern AVCodec ff_a64multi5_encoder;
 extern AVCodec ff_aasc_decoder;
+extern AVCodec ff_bytevc2_decoder;
 extern AVCodec ff_aic_decoder;
 extern AVCodec ff_alias_pix_encoder;
 extern AVCodec ff_alias_pix_decoder;

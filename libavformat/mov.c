@@ -1895,6 +1895,33 @@ static int mov_read_wave(MOVContext *c, AVIOContext *pb, MOVAtom atom)
  * This function reads atom content and puts data in extradata without tag
  * nor size unlike mov_read_extradata.
  */
+
+static int mov_read_bv2c(MOVContext *c, AVIOContext *pb, MOVAtom atom)
+{
+    AVStream *st;
+    int ret;
+
+    if (c->fc->nb_streams < 1)
+        return 0;
+    st = c->fc->streams[c->fc->nb_streams - 1];
+
+    if ((uint64_t)atom.size > (1 << 30))
+        return AVERROR_INVALIDDATA;
+
+    /* bv2C 参数集容器整体作为 extradata, 由 bytevc2 解码器转 Annex-B */
+    ret = ff_get_extradata(c->fc, st->codecpar, pb, atom.size);
+    if (ret < 0)
+        return ret;
+
+    /* ByteVC2 码流在实际生态中常伪装于 hvc1/hev1 sample entry 内
+     * (字节系播放器在 HEVC 解码器路径上替换实现)。检测到 bv2C
+     * 参数集容器即切换 codec id, 使播放器自动选用 bytevc2 解码器 */
+    if (st->codecpar->codec_id == AV_CODEC_ID_HEVC)
+        st->codecpar->codec_id = AV_CODEC_ID_BYTEVC2;
+
+    return 0;
+}
+
 static int mov_read_glbl(MOVContext *c, AVIOContext *pb, MOVAtom atom)
 {
     AVStream *st;
@@ -6872,6 +6899,7 @@ static const MOVParseTableEntry mov_default_parse_table[] = {
 { MKTAG('f','i','e','l'), mov_read_fiel },
 { MKTAG('a','d','r','m'), mov_read_adrm },
 { MKTAG('f','t','y','p'), mov_read_ftyp },
+{ MKTAG('b','v','2','C'), mov_read_bv2c },
 { MKTAG('g','l','b','l'), mov_read_glbl },
 { MKTAG('h','d','l','r'), mov_read_hdlr },
 { MKTAG('i','l','s','t'), mov_read_ilst },

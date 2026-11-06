@@ -3381,6 +3381,13 @@ static const AVCodecDescriptor codec_descriptors[] = {
         .long_name = NULL_IF_CONFIG_SMALL("AVFrame to AVPacket passthrough"),
         .props     = AV_CODEC_PROP_LOSSLESS,
     },
+    {
+        .id        = AV_CODEC_ID_BYTEVC2,
+        .type      = AVMEDIA_TYPE_VIDEO,
+        .name      = "bytevc2",
+        .long_name = "ByteVC2 (software)",
+        .props     = AV_CODEC_PROP_LOSSY,
+    },
 };
 
 static int descriptor_compare(const void *key, const void *member)

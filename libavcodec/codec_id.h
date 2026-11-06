@@ -297,6 +297,9 @@ enum AVCodecID {
     AV_CODEC_ID_PFM,
 
     /* various PCM "codecs" */
+    AV_CODEC_ID_BYTEVC2 = 0x21004,
+    /* 私有解码器 (mp4 fourcc 'bv2C'): 大值私有段(ANULL 0x21003 后),
+     * desc 表按 id 升序 bsearch, 表尾插入须大值 */
     AV_CODEC_ID_FIRST_AUDIO = 0x10000,     ///< A dummy id pointing at the start of audio codecs
     AV_CODEC_ID_PCM_S16LE = 0x10000,
     AV_CODEC_ID_PCM_S16BE,
