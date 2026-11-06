@@ -33,17 +33,6 @@ jobs:
           unzip -q ${NDK_VER}-linux-x86_64.zip -d "$HOME/ndk"
           echo "NDK=$HOME/ndk/$NDK_VER" >> "$GITHUB_ENV"
 
-      - name: Build openssl 1.1.1w arm64 (静态)
-        shell: bash
-        run: |
-          TOOLS="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
-          wget -q https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1w/openssl-1.1.1w.tar.gz
-          tar xzf openssl-1.1.1w.tar.gz
-          cd openssl-1.1.1w
-          PATH="$TOOLS:$PATH" ./Configure android-arm64 no-shared no-tests \
-            -D__ANDROID_API__=21 --prefix="$PWD/out"
-          PATH="$TOOLS:$PATH" make -j"$(nproc)" build_libs
-
       - name: Configure ffmpeg (ex_so 参数 + bytevc2)
         shell: bash
         run: |
