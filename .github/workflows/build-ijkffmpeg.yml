@@ -44,7 +44,7 @@ jobs:
           make -j"$(nproc)" libavcodec/libavcodec.a libavformat/libavformat.a libavutil/libavutil.a
           gcc bytevc2/stub.c bytevc2/probe_ijk.c -I. -o probe_ijk \
             libavformat/libavformat.a libavcodec/libavcodec.a libavutil/libavutil.a \
-            -lm -lpthread
+            -lm -lpthread -lz
           ./probe_ijk bytevc2/bvc2_plain.mp4
 
   build-arm64:
