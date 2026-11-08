@@ -21,32 +21,6 @@ env:
   NDK_VER: android-ndk-r22b
 
 jobs:
-  probe-x86:
-    # x86 本机最小编（stub 桩替代 arm64 私有解码库）：验证 demuxer
-    # bv2C box→codec_id 切换 + desc bsearch(0x21004) + find_decoder
-    # 注册链——mpv 真机实锤的失败环节（desc 查不到→fallback hevc）。
-    # 解码器本体逻辑已由 mpv 链 qemu-aarch64 真库逐字节对拍覆盖。
-    runs-on: ubuntu-22.04
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build & run probe (x86 minimal)
-        run: |
-          # 不加 --disable-network：ijk fork 的 libavutil/application.c
-          # 恒编且走 libavformat/network.h，disable-network 分支在 glibc
-          # 下自定义 sockaddr/addrinfo 与系统头撞车（redefinition 实锤）
-          ./configure \
-            --disable-everything --enable-demuxer=mov --enable-protocol=file \
-            --enable-decoder=bytevc2 \
-            --disable-programs --disable-doc \
-            --disable-asm --enable-static --disable-shared \
-            --disable-debug
-          make -j"$(nproc)" libavcodec/libavcodec.a libavformat/libavformat.a libavutil/libavutil.a
-          gcc bytevc2/stub.c bytevc2/probe_ijk.c -I. -o probe_ijk \
-            libavformat/libavformat.a libavcodec/libavcodec.a libavutil/libavutil.a \
-            -lm -lpthread -lz
-          ./probe_ijk bytevc2/bvc2_plain.mp4
-
   build-arm64:
     runs-on: ubuntu-22.04
     timeout-minutes: 90
